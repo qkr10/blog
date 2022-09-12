@@ -12,3 +12,5 @@ tags:
 [gatsby-starter-minimal-blog](https://github.com/LekoArts/gatsby-starter-minimal-blog) theme을 이용합니다.
 
 [netlify](https://www.netlify.com/) 를 통해 호스팅 합니다.
+
+[블로그의 소스코드는 여기서 볼수 있습니다.](https://github.com/qkr10/blog)

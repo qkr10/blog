@@ -10,7 +10,7 @@ module.exports = {
     siteTitle: `개발 블로그`,
     siteTitleAlt: `개발 블로그 - 공부하자`,
     siteHeadline: `개발 블로그 - 같이 공부해요`,
-    siteUrl: `https://minimal-blog.lekoarts.de`,
+    siteUrl: `https://qkr10-blog.netlify.app/`,
     siteDescription: `Typography driven, feature-rich blogging theme with minimal aesthetics. Includes tags/categories support and extensive features for code blocks such as live preview, line numbers, and line highlighting.`,
     siteLanguage: `en`,
     siteImage: `/banner.jpg`,

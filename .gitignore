@@ -70,7 +70,3 @@ public
 
 # Local Netlify folder
 .netlify
-
-# setting files
-/gatsby-config.js
-static/google3d41120995559fe3.html

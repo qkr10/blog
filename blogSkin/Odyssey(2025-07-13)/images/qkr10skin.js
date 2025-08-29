@@ -28,6 +28,13 @@ function enableMarkdownCss() {
     shadow.appendChild(markdown);
 }
 
+function enableMermaidCodeToDiagram() {
+    const elements = $('code.language-mermaid');
+
+    elements.parent('pre').css('text-align', 'center');
+    elements.contents().unwrap().wrap('<div class="mermaid"></div>');
+}
+
 (function ($) {
     $(document).ready(function () {
         enableMarkdownCss();

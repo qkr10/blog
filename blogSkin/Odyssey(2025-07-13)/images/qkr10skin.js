@@ -26,17 +26,31 @@ function enableMarkdownCss() {
         markdown.appendChild(original.firstChild);
     }
     shadow.appendChild(markdown);
+
+    return shadow;
 }
 
-function enableMermaidCodeToDiagram() {
-    const elements = $('code.language-mermaid');
+function enableMermaidDiagramRendering(shadowRoot) {
+    mermaid.initialize({ startOnLoad: false });
 
-    elements.parent('pre').css('text-align', 'center');
-    elements.contents().unwrap().wrap('<div class="mermaid"></div>');
+    const elements = shadowRoot.querySelectorAll('code.language-mermaid');
+    let idCounter = 0;
+
+    elements.forEach(element => {
+        const pre = element.parentElement;
+        const code = element.textContent;
+
+        mermaid.render(`mermaid-${idCounter++}`, code)
+            .then(({ svg }) => {
+                pre.outerHTML = svg;
+            })
+            .catch(err => console.error("Mermaid render error:", err));
+    });
 }
 
 (function ($) {
     $(document).ready(function () {
-        enableMarkdownCss();
+        const shadowRoot = enableMarkdownCss();
+        enableMermaidDiagramRendering(shadowRoot);
     })
 })(tjQuery);

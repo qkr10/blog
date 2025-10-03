@@ -121,6 +121,7 @@ return count + 1
 또한 불러온 스크립트를 호출할 때마다 사용하는 RedisTemplate.execute() 메소드에 두가지 문제점이 있었다.
 1. 메소드의 인자가 가변인자여서 스크립트가 어떤 인자를 가지는지 알수 없었다.
 2. 스크립트가 숫자를 인자로 받더라도 문자열로 변환해서 넘겨줘야 하는 불편함이 있다.
+
 따라서 불러온 스크립트마다 메소드를 만들어서 불편함을 줄이려고 했다.
 ([깃허브 링크](https://github.com/CEC-project/CEC-Back/blob/736fb032acf970a15c7f20841ab84984ffba4023/src/main/java/com/backend/server/config/RedisScriptConfig.java))
 ```java
@@ -159,12 +160,13 @@ public class RedisScriptConfig {
 1. 요청 횟수 제한을 초과하면 `window 범위내에서 가장 오래된 요청 시간` 을 음수로 바꾸어 반환한다.
 2. 요청 횟수 제한을 넘지 않으면 `window 범위내에서 현재까지 요청받은 개수`를 반환한다.
 
-`미래의 내가 이해하기 쉬운 코드` 또는 `유지보수가 쉬운 코드` 를 작성하려면, 처음 본 사람의 입장에서도 그 의도가 명확해야 한다고 생각한다.
-이 스크립트/메소드를 처음 본 사람의 입장에서 이 코드들의 의도를 생각해 봤을때, 스크립트 파일명이나 메소드 명에 적혀있는 `Add / Delete`라는 단어를 통해, `Rate Limit 를 구현하기 위한 기록을 추가 / 삭제` 하는 것을 가장 큰 의도라고 여길 것이다.
-반환값이 음수일때만 `특별한 의미`가 있다는 것은 인지 부하도 크고, 처음 본 사람 입장에서는 그 `특별한 의미`를 모를 수밖에 없을 것이다. 그렇다고 해서, 이 의미있는 Long값 정보를 버리고 Boolean값 `참/거짓`만 반환하는 것도 최선이 아니라고 판단했다.
-따라서, 요청 횟수 제한을 초과하였을 때는 커스텀 예외를 throw 하고 예외 클래스내에 정보를 담도록 하였고, 요청 횟수 제한을 넘지 않으면 그대로 정보를 반환하도록 코드를 짰다.
+위 시나리오를 보면 커다란 문제가 있는데, 어떤 시나리오에서든 공통적으로 숫자 값을 반환하며, 그 숫자가 음수인지 양수인지에 따라 `특별한 의미`를 가진다는 것이다.
+미래의 내가 이해하기 쉬운 코드 또는 유지보수가 쉬운 코드 를 작성하려면, `처음 본 사람의 입장`에서도 그 의도가 명확해야 한다고 생각한다.
+이 스크립트/메소드를 `처음 본 사람의 입장`에서 이 코드들의 의도를 생각해 봤을때, 스크립트 파일명이나 메소드 명에 적혀있는 `Add / Delete`라는 단어를 통해, `Rate Limit 를 구현하기 위한 기록을 추가 / 삭제` 하는 것을 가장 큰 의도라고 여길 것이다.
+반환값이 음수일때만 `특별한 의미`가 있다는 것은 인지 부하도 크고, `처음 본 사람의 입장`에서는 그 `특별한 의미`를 모를 수밖에 없을 것이다. 그렇다고 해서, 이 의미있는 Long값 정보를 버리고 Boolean값 참/거짓만 반환하는 것도 최선이 아니라고 판단했다.
+따라서, 요청 횟수 제한을 초과하였을 때는 [커스텀 예외](https://github.com/CEC-project/CEC-Back/blob/736fb032acf970a15c7f20841ab84984ffba4023/src/main/java/com/backend/server/api/common/exceptionHandler/exception/TooManyRequestException.java)를 throw 하고 예외 클래스내에 정보를 담도록 하였고, 요청 횟수 제한을 넘지 않으면 그대로 정보를 반환하도록 코드를 짰다.
 
-또한, 이러한 코드가 어디에 위치해야 할지 고민했는데, DB(레디스도 인메모리 DB가 아닌가?)와 밀접하게 연관된 RedisScriptConfig 클래스를 사용한다는 점 때문에, Repository 레이어에 위치시켰다. 또한 이 클래스가 RateLimitRepository 인터페이스를 구현하게 하고, 사용할때도 RateLimitRepository 인터페이스로 사용하여, 레디스가 아닌 다른 기술을 써도 변경이 이 이상 전파되지 않게 했다.
+또한, 이러한 코드가 어디에 위치해야 할지 고민했는데, 외부 저장소와 밀접하게 연관된 RedisScriptConfig 클래스를 사용한다는 점 때문에, Repository 레이어에 위치시켰다. 또한 이 클래스가 RateLimitRepository 인터페이스를 구현하게 하고, 사용할때도 RateLimitRepository 인터페이스로 사용하여, 레디스가 아닌 다른 기술을 써도 변경이 이 이상 전파되지 않게 했다.
 
 RedisScriptConfig 클래스와 RedisRateLimitRepository 클래스를 합칠지도 고민했는데, Lua 스크립트를 불러오는 것만 전담하는 RedisScriptConfig 클래스가 필요하다고 생각되어 분리해 두었다.
 ([깃허브 링크](https://github.com/CEC-project/CEC-Back/blob/736fb032acf970a15c7f20841ab84984ffba4023/src/main/java/com/backend/server/model/repository/rateLimit/RedisRateLimitRepository.java))
@@ -218,11 +220,11 @@ public class RedisRateLimitRepository implements RateLimitRepository {
 
 그에 따라 어노테이션에 필요한 인자는 다음과 같다.
 1. 몇초에 몇회 제한을 걸 것인지
-	1. `time` : 시간, `timeUnit` : 시간단위, `count` : 횟수
+	- `time` : 시간, `timeUnit` : 시간단위, `count` : 횟수
 2. 무엇을 기준으로 클라이언트를 식별할 것인지
-	1. `identifier` : 기본값은 로그인한 계정 id(= 학번) / SpEL 을 이용한 표현식(= 로그인 시도한 id)
+	- `identifier` : 기본값은 로그인한 계정 id(= 학번) / SpEL 을 이용한 표현식(= 로그인 시도한 id)
 3. 이 어노테이션이 붙은 메소드가 정상 반환되면, 초기화 시킬 것인지(= 로그인 성공시 실패 횟수 초기화)
-	1. `resetOnSuccess` : 정상 반환시 초기화 여부
+	- `resetOnSuccess` : 정상 반환시 초기화 여부
 
 ([깃허브 링크](https://github.com/CEC-project/CEC-Back/blob/736fb032acf970a15c7f20841ab84984ffba4023/src/main/java/com/backend/server/support/rateLimit/LimitRequestPerTime.java))
 ```java
@@ -272,8 +274,8 @@ public @interface LimitRequestPerTime {
 
 ### 5. RateLimiterAspect 클래스
 이제 여태까지 작성한 코드와 스프링의 AOP 기능을 사용하여, 클라이언트의 요청이 제한되어야 하는 경우, 메소드의 실행을 막는 코드를 작성하면 된다.
-- `@LimitRequestPerTime이 붙은 메소드`가 호출되면, 아래 코드의 intercepter() 가 먼저 호출되며, intercepter()는 인자로 joinPoint 를 받는다. 이 intercepter() 내에서 joinPoint.proceed() 를 호출하면, 그제서야 `@LimitRequestPerTime이 붙은 메소드` 가 호출되는 것이다. 반대로 말하면, joinPoint.proceed() 를 호출하지 않으면(조건문 / 예외 throw 등을 이용하여) `@LimitRequestPerTime이 붙은 메소드`는 호출되지 않게 된다.
-- 아래 코드의 intercepter() 를 보면, rateLimitRepository.add() 를 호출하고 나서 joinPoint.proceed() 를 호출하고 있다. rateLimitRepository.add() 는 아까 3.에서 작성한 요청 횟수 제한을 초과하는 경우 예외를 throw 하는 코드이다. 따라서, 요청 횟수 제한을 초과하는 경우 예외가 throw 됨에 따라 joinPoint.proceed() 를 호출하지 않게 되고, 상술한 대로 joinPoint.proceed() 가 호출되지 않았으니 `@LimitRequestPerTime이 붙은 메소드` 도 호출되지 않는다.
+
+아래 코드의 interceptor() 에서 joinPoint.proceed() 를 호출하고 있는데, 그 코드가 실행되면 요청 횟수 제한에 걸리지 않았다는 것이다. 바로 윗줄에서 rateLimitRepository.add() 를 호출하고 있는데, 이 코드가 3.에서 설명한 코드이다. 여기서 예외가 발생하면 요청 횟수 제한에 걸렸다는 뜻이고, [예외 핸들링 컨트롤러](https://github.com/CEC-project/CEC-Back/blob/736fb032acf970a15c7f20841ab84984ffba4023/src/main/java/com/backend/server/api/common/exceptionHandler/controller/CommonExceptionController.java#L83)가 실행되게 된다.
 
 RateLimitMethodInfo 라는 클래스를 사용하고 있는데, 해당 클래스에 대해서는 다음 문단에서 설명하겠다.
 
@@ -409,13 +411,13 @@ public class RateLimitMethodInfo {
 ### 후기
 누가 시키지 않았지만, 다른 기능보다도 필수적이라는 내 판단에 의해 기능을 추가하게 되었고, 완성한 것에 대해서, 개발 지식이 늘어난 것에 대해서 뿌듯하다. 하지만 분명 부족한 점도 많았는데, 다음에 다시 구현한다면 다르게 구현 할 것 같다.
 
-1. 다시 구현한다면 토큰 버킷 방식으로 구현해 볼 것이다.
+###### 1. 다시 구현한다면 토큰 버킷 방식으로 구현해 볼 것이다.
 Redis Sorted sets 를 이용한 Sliding Window Log 방식 구현의 난이도를 과소평가 하여, 예상보다 시간이 오래 걸린듯 하다. 정확성이 매우 중요하지 않다면 토큰 버킷이 간단하고 성능도 좋다고 생각한다. 또한, `예상 대기 시간 표시 기능`은 토큰 버킷으로도 충분히 구현가능하며, `최근 첫/마지막 요청 일시 표시 기능`은 과연 그 기능이 Rate Limit 구현과 함께 구현해야할지, 로깅 기능이나 별도의 기능을 따로 만드는게 맞는지를 고민해야 할 것이다.
 
-2. 성능을 위해 리플렉싱을 줄이기 위한 캐싱을 하는데, SpEL을 사용한다는건 모순 아닐까.
+###### 2. 성능을 위해 리플렉싱을 줄이기 위한 캐싱을 하는데, SpEL을 사용한다는건 모순 아닐까.
 SpEL 표현식의 파싱 결과(AST(추상구문트리))는 캐싱되기 때문에, setVariable(), getValue() 두가지 메소드만 로그인 요청마다 호출될 것이다. 성능에 가장 영향을 주는 파싱 과정이 생략되더라도, 이게 어느정도 성능에 영향을 주는지 테스트 해보면 좋겠다. 성능에 영향을 준다면, 직접 간단한 표현식 파서를 만들거나 라이브러리를 가져다 쓸 수도 있을것이다.(사칙연산 기능은 필요 없으니까, SpEL 은 닭잡는데 소잡는 칼을 쓰는 것일 수 있다)
 
-3. 일반적인 서비스에서의 로그인 횟수 제한 기능과는 거리가 있다.
+###### 3. 일반적인 서비스에서의 로그인 횟수 제한 기능과는 거리가 있다.
 학과 조교와 학생들이 운영하고 사용할 것을 가정하였으니 관리 부담을 줄이기 위해, 계정 잠금을 없애는 등, 제한을 약화시킨 것도 있다. Rate Limit 와 로그인 횟수 제한은 분명 다른 기능이고, 이번 프로젝트에서만 비용(노력 + 시간) 절감을 위해 함께 구현해 봤다고 봐야 맞을 것이다.
 
 아마 다음 글은 `S3 파일 업로드 API 의 테스트 코드 작성기`, `테스트 코드 성능 개선 및 테스트 격리 구현기`, `Rate Limit 기능의 테스트 코드 작성기`등을 작성할 것 같다. 이번 글은 첫번째 글보다는 정돈된 듯 해서 마음에 든다. 이런식으로 쭉 쓸 수 있다면 좋겠다.

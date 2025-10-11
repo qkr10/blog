@@ -15,10 +15,12 @@ function enableMarkdownCss() {
         return;
     }
     const shadow = original.attachShadow({ mode: "open" });
-
-    const html = `<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown.min.css" integrity="sha512-BrOPA520KmDMqieeM7XFe6a3u3Sb3F1JBaQnrIAmWg3EYrciJ+Qqe6ZcKCdfPv26rGcgTrJnZ/IdQEct8h3Zhw==" crossorigin="anonymous" referrerpolicy="no-referrer" />`;
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    shadow.appendChild(doc.head.firstChild);
+    const template = document.createElement("template");
+    template.innerHTML = `
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    `;
+    shadow.appendChild(template.content.cloneNode(true));
 
     const markdown = document.createElement("div");
     markdown.className = "markdown-body";
@@ -33,18 +35,77 @@ function enableMarkdownCss() {
 function enableMermaidDiagramRendering(shadowRoot) {
     mermaid.initialize({ startOnLoad: false });
 
-    const elements = shadowRoot.querySelectorAll('code.language-mermaid');
+    const elements = shadowRoot.querySelectorAll("code.language-mermaid");
     let idCounter = 0;
 
-    elements.forEach(element => {
-        const pre = element.parentElement;
-        const code = element.textContent;
+    elements.forEach((codeEl) => {
+        const pre = codeEl.parentElement;
+        const code = codeEl.textContent.trim();
 
-        mermaid.render(`mermaid-${idCounter++}`, code)
+        mermaid
+            .render(`mermaid-${idCounter++}`, code)
             .then(({ svg }) => {
-                pre.outerHTML = svg;
+                // wrapper
+                const wrapper = document.createElement("div");
+                wrapper.classList.add("mermaid-wrapper");
+
+                // SVG 컨테이너
+                const svgContainer = document.createElement("div");
+                svgContainer.innerHTML = svg;
+                svgContainer.classList.add("mermaid-svg");
+
+                // 코드 블록은 기본적으로 숨김
+                codeEl.style.display = "none";
+
+                // 토글 버튼
+                const toggleButton = document.createElement("button");
+                toggleButton.textContent = "💡 코드 보기";
+                Object.assign(toggleButton.style, {
+                    position: "relative",
+                    top: "6px",
+                    right: "6px",
+                    padding: "4px 8px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    background: "rgba(0, 0, 0, 0.6)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    zIndex: "1000",
+                    display: "block",
+                    float: "right",
+                });
+
+                let showingCode = false;
+                toggleButton.addEventListener("click", () => {
+                    showingCode = !showingCode;
+                    if (showingCode) {
+                        svgContainer.style.display = "none";
+                        codeEl.style.display = "block";
+                        toggleButton.textContent = "📊 다이어그램 보기";
+                    } else {
+                        codeEl.style.display = "none";
+                        svgContainer.style.display = "block";
+                        toggleButton.textContent = "💡 코드 보기";
+                    }
+                });
+
+                // 구조: wrapper → toggleButton + svg + code
+                wrapper.appendChild(toggleButton);
+                wrapper.appendChild(svgContainer);
+                wrapper.appendChild(codeEl);
+
+                pre.replaceWith(wrapper);
             })
-            .catch(err => console.error("Mermaid render error:", err));
+            .catch((err) => console.error("Mermaid render error:", err));
+    });
+}
+
+function enableSyntaxHighlighting(shadowRoot) {
+    const codeElements = shadowRoot.querySelectorAll('code[class*="language-"]');
+
+    codeElements.forEach(codeElement => {
+        hljs.highlightElement(codeElement);
     });
 }
 
@@ -52,5 +113,6 @@ function enableMermaidDiagramRendering(shadowRoot) {
     $(document).ready(function () {
         const shadowRoot = enableMarkdownCss();
         enableMermaidDiagramRendering(shadowRoot);
+        enableSyntaxHighlighting(shadowRoot);
     })
 })(tjQuery);

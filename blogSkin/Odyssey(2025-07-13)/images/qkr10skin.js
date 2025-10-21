@@ -101,6 +101,25 @@ function enableMermaidDiagramRendering(shadowRoot) {
     });
 }
 
+function assignEncodedHeadingIds(shadowRoot) {
+    const headings = shadowRoot.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+    headings.forEach(heading => {
+        const text = heading.textContent.trim();
+        if (!text) return;
+
+        const encodedId = encodeURIComponent(text);
+
+        let uniqueId = encodedId;
+        let counter = 1;
+        while (shadowRoot.getElementById(uniqueId)) {
+            uniqueId = `${encodedId}-${counter++}`;
+        }
+
+        heading.id = uniqueId;
+    });
+}
+
 function enableSyntaxHighlighting(shadowRoot) {
     const codeElements = shadowRoot.querySelectorAll('code[class*="language-"]');
 

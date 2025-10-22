@@ -7,7 +7,7 @@ function enableMarkdownCss() {
 
     const original = document.querySelector("div#article-view > div.tt_article_useless_p_margin");
     if (!original) {
-        console.log("enableMarkdownCss() : 선택자 오류");
+        console.log("enableMarkdownCss() : 포스트가 아님");
         return;
     }
     if (original.shadowRoot) {
@@ -128,10 +128,43 @@ function enableSyntaxHighlighting(shadowRoot) {
     });
 }
 
+// 3번 포스트를 들어갈 수 없게 처리함.
+function deletePostButton() {
+    document.querySelectorAll('article').forEach(article => {
+        if (article.querySelector('a[href="/3"]')) {
+            article.remove();
+        }
+    });
+}
+
+function observeHashChangeAndScroll(shadowRoot) {
+    function scrollToHashTarget() {
+        const hash = window.location.hash;
+        if (!hash || !hash.startsWith('#')) return;
+
+        // 괄호가 인코딩 된 경우가 있는데, encodeURIComponent() 와 encodeURI() 는 괄호를 인코딩하므로, 일관성을 맞추기 위해 한번 decode 했다가 encode 한다. 
+        const targetId = encodeURIComponent(decodeURIComponent(hash.substring(1)));
+        const target = shadowRoot.getElementById(targetId);
+
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    scrollToHashTarget();
+    window.addEventListener('hashchange', scrollToHashTarget);
+}
+
 (function ($) {
     $(document).ready(function () {
         const shadowRoot = enableMarkdownCss();
-        enableMermaidDiagramRendering(shadowRoot);
-        enableSyntaxHighlighting(shadowRoot);
+        if (shadowRoot) {
+            enableMermaidDiagramRendering(shadowRoot);
+            assignEncodedHeadingIds(shadowRoot);
+            enableSyntaxHighlighting(shadowRoot);
+            observeHashChangeAndScroll(shadowRoot);
+        }
+
+        deletePostButton();
     })
 })(tjQuery);
